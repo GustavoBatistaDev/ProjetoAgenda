@@ -11,7 +11,7 @@ def index(request):
     contatos = Contato.objects.order_by('-id').filter(
         mostrar=True
     )
-    paginator = Paginator(contatos, per_page=2)
+    paginator = Paginator(contatos, per_page=10)
     page = request.GET.get('p')
     contatos = paginator.get_page(page)
 

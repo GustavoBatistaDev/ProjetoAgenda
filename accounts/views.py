@@ -3,6 +3,7 @@ from django.contrib import messages, auth
 from django.core.validators import validate_email
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
+from .models import FormContato
 
 def login(request):
     if request.method != 'POST':
@@ -24,7 +25,8 @@ def login(request):
 
 
 def logout(request):
-    return render(request, 'accounts/logout.html')
+    auth.logout(request)
+    return redirect('index')
 
 
 def cadastro(request):
@@ -38,38 +40,60 @@ def cadastro(request):
     senha2 = request.POST.get('senha2')
 
     if not nome or not sobrenome or not email or not usuario or not senha or not senha2:
-        messages.add_message(request, messages.ERROR, 'Nenhum campo pode ser nulo!')
+        messages.error(request, 'Nenhum campo pode ser nulo!')
         return render(request, 'accounts/cadastro.html')
     try:
         validate_email(email)
     except:
-        messages.add_message(request, messages.ERROR, 'Email inválido!')
+        messages.error(request, 'Email inválido!')
         return render(request, 'accounts/cadastro.html')
 
     if len(senha) < 6:
-        messages.add_message(request, messages.ERROR, 'Senha precisa ter no mínimo 6 caracteres!')
+        messages.error(request, 'Senha precisa ter no mínimo 6 caracteres!')
         return render(request, 'accounts/cadastro.html')
 
     if User.objects.filter(username=usuario).exists():
-        messages.add_message(request, messages.ERROR, 'Nome de usuário já existente!')
+        messages.error(request, 'Nome de usuário já existente!')
         return render(request, 'accounts/cadastro.html')
 
     if User.objects.filter(email=email).exists():
-        messages.add_message(request, messages.ERROR, 'Email já existente!')
+        messages.error(request, 'Email já existente!')
         return render(request, 'accounts/cadastro.html')
 
     if senha != senha2:
-        messages.add_message(request, messages.ERROR, 'Senhas não coincidem!')
-
+        messages.error(request, 'Senhas não coincidem!')
         return render(request, 'accounts/cadastro.html')
 
-    messages.add_message(request, messages.SUCCESS, 'Cadastrado com sucesso! Agora faça login.')
+    messages.success(request, 'Cadastrado com sucesso! Agora faça login.')
     user = User.objects.create_user(username=usuario, email=email, password=senha, first_name=nome, last_name=sobrenome)
-
     user.save()
     return redirect('login')
 
 
 @login_required(redirect_field_name='login')
 def dashboard(request):
-    return render(request, 'accounts/dashboard.html')
+    if request.method != 'POST':
+        form = FormContato()
+        return render(request, 'accounts/dashboard.html', {
+            'form': form
+        })
+
+    form = FormContato(request.POST, request.FILES)
+    if not form.is_valid():
+        messages.error(request, 'Erro ao enviar formulário!')
+        form = FormContato(request.POST)
+        return render(request, 'accounts/dashboard.html', {
+            'form': form
+        })
+    descricao = request.POST.get('descricao')
+
+    if len(descricao) < 5:
+        messages.error(request, 'Descrição precisa ter no mínimo 5 caracteres!')
+        form = FormContato(request.POST)
+        return render(request, 'accounts/dashboard.html', {
+            'form': form
+        })
+
+    form.save()
+    messages.success(request, f'Contato {request.POST.get("nome")} salvo com sucesso!')
+    return redirect('dashboard')
